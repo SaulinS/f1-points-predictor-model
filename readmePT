@@ -1,5 +1,7 @@
 # F1 Team Points Predictor
 
+🇧🇷 Português | [🇺🇸 English](README.md)
+
 Pipeline de dados end-to-end (coleta → engenharia de dados → modelo preditivo) para
 prever a **pontuação de uma equipe de Fórmula 1 por corrida**, usando dados exclusivos
 do regulamento técnico atual (2026).
