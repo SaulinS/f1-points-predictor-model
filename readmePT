@@ -1,0 +1,103 @@
+# F1 Team Points Predictor
+
+Pipeline de dados end-to-end (coleta → engenharia de dados → modelo preditivo) para
+prever a **pontuação de uma equipe de Fórmula 1 por corrida**, usando dados exclusivos
+do regulamento técnico atual (2026).
+
+Projeto de portfólio construído durante as férias, com foco em boas práticas de
+engenharia de dados: coleta resiliente com rate limiting, armazenamento em camadas
+(raw → processed), banco relacional containerizado e pipeline reprodutível.
+
+## Por que 2026 apenas?
+
+A temporada 2026 da F1 trouxe um regulamento técnico totalmente novo (motor híbrido,
+aerodinâmica ativa, novas equipes). Misturar dados de eras de regulamento diferentes
+distorceria o modelo, já que o desempenho relativo entre equipes não é comparável
+entre regulamentos. Por isso, a variável-alvo (pontos da equipe) é treinada **somente**
+com dados de 2026. Features sobre características fixas — como o histórico de um
+piloto em determinado circuito — continuam usando dados históricos (2019-2025), já
+que dependem da habilidade do piloto, não do carro.
+
+## Status do projeto
+
+- [x] **Fase 1 — Coleta de Dados**: calendário, resultados, qualifying, pit stops,
+      status de corrida, grid atual e histórico de pilotos por circuito
+- [x] **Fase 2 — Engenharia de Dados**: schema relacional desenhado, banco
+      PostgreSQL containerizado com Docker
+- [ ] Fase 2.1 — Pipeline de ETL (raw → banco)
+- [ ] Fase 3 — Modelo preditivo (regressão de pontos por equipe/corrida)
+- [ ] Fase 4 — Dashboard ou API servindo as previsões
+
+## Stack técnica
+
+| Camada | Tecnologia |
+|---|---|
+| Coleta de dados | Python, `requests` |
+| Armazenamento bruto | JSON (raw layer) |
+| Banco de dados | PostgreSQL 16 (via Docker) |
+| ETL | Python, `pandas`, `sqlalchemy` |
+| Modelagem | `scikit-learn` (planejado) |
+| Ambiente | WSL2 (Ubuntu) + Docker Desktop |
+
+## Fonte de dados
+
+- **[Jolpica-F1](https://api.jolpi.ca)** — API pública sucessora da Ergast API,
+  fornece resultados de corrida, qualifying, pit stops, status de finalização e
+  classificações históricas e da temporada atual.
+- **Classificação de tipo de pista** — curadoria manual (`data/lookup/track_types.csv`),
+  já que não existe fonte pública estruturada para essa categorização.
+
+## Estrutura do projeto
+
+```
+f1-team-points-predictor/
+├── data/
+│   ├── raw/              # dados brutos, exatamente como vieram da API
+│   ├── processed/        # dados tratados, prontos para carga no banco
+│   └── lookup/           # tabelas de referência curadas manualmente
+├── src/
+│   ├── collectors/       # scripts de coleta de dados (Fase 1)
+│   ├── etl/               # schema.sql e pipeline de transformação/carga (Fase 2)
+│   └── models/            # treinamento e avaliação do modelo (Fase 3)
+├── notebooks/              # exploração e prototipagem
+├── docker-compose.yml       # sobe o PostgreSQL containerizado
+└── requirements.txt
+```
+
+## Como rodar
+
+**Pré-requisitos:** WSL2 (Ubuntu) com Python 3.10+, Docker Desktop com integração WSL2 habilitada.
+
+```bash
+# Ambiente Python
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Banco de dados
+docker compose up -d
+
+# Coleta de dados (Fase 1)
+python -m src.collectors.collect_season --season 2026
+python -m src.collectors.collect_current_grid --season 2026
+python -m src.collectors.collect_driver_circuit_history --seasons 2019 2020 2021 2022 2023 2024 2025
+```
+
+Os dados brutos são salvos em `data/raw/`. O schema do banco é criado automaticamente
+na primeira vez que o container do PostgreSQL sobe (via `docker-entrypoint-initdb.d`).
+
+## Modelagem do banco
+
+O banco tem duas views centrais que evitam duplicar dados brutos:
+
+- `team_race_points` — soma os pontos dos dois pilotos por equipe/corrida (é o
+  **alvo** do modelo preditivo)
+- `driver_circuit_history` — resultados de temporadas anteriores por piloto e
+  circuito (é a **feature** de histórico do piloto na pista)
+
+Veja `src/etl/schema.sql` para o schema completo.
+
+## Autor
+
+Projeto desenvolvido como parte de um portfólio de engenharia de dados e ciência
+de dados, por um estudante de Engenharia da Computação.
