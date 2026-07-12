@@ -1,5 +1,7 @@
 # f1-points-predictor-model
 
+🇺🇸 English | [🇧🇷 Português](READMEpt.md)
+
 End-to-end data pipeline (collection → data engineering → predictive model) to
 forecast a **Formula 1 team's points per race**, using data exclusively from the
 current technical regulation era (2026).
