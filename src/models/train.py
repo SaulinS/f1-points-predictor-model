@@ -23,13 +23,15 @@ import pandas as pd
 from pathlib import Path
 
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from scipy.stats import spearmanr
+
+from src.models.two_stage import HurdleRegressor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -53,14 +55,19 @@ TARGET = "team_points"
 FIRST_TEST_ROUND = 6
 
 
-def make_model(kind: str) -> Pipeline:
+def make_model(kind: str, numeric_features: list[str] | None = None) -> Pipeline:
     """
     Monta o pipeline completo (imputação -> escala -> modelo).
 
     A imputação fica dentro do pipeline de propósito: assim a mediana é
     calculada só com os dados de treino de cada fold, e não com a base
     inteira, que seria outra forma sutil de vazamento.
+
+    `numeric_features` permite treinar um modelo com um subconjunto das
+    colunas -- usado para prever corridas cujo qualifying ainda não aconteceu,
+    onde as features de grid não existem.
     """
+    numeric_features = numeric_features or NUMERIC_FEATURES
     numeric = Pipeline([
         ("impute", SimpleImputer(strategy="median")),
         ("scale", StandardScaler()),
@@ -70,7 +77,7 @@ def make_model(kind: str) -> Pipeline:
         ("onehot", OneHotEncoder(handle_unknown="ignore")),
     ])
     pre = ColumnTransformer([
-        ("num", numeric, NUMERIC_FEATURES),
+        ("num", numeric, numeric_features),
         ("cat", categorical, CATEGORICAL_FEATURES),
     ])
 
@@ -84,6 +91,22 @@ def make_model(kind: str) -> Pipeline:
             max_depth=4,          # árvores rasas pelo mesmo motivo
             min_samples_leaf=5,
             random_state=42,
+        )
+    elif kind == "hurdle":
+        # Duas etapas com modelos lineares: a etapa condicional treina só com
+        # as linhas que pontuaram (~60% da base), então precisa ser simples.
+        model = HurdleRegressor(
+            classifier=LogisticRegression(C=1.0, max_iter=1000),
+            regressor=Ridge(alpha=10.0),
+        )
+    elif kind == "hurdle_rf":
+        model = HurdleRegressor(
+            classifier=RandomForestClassifier(
+                n_estimators=300, max_depth=4, min_samples_leaf=5, random_state=42
+            ),
+            regressor=RandomForestRegressor(
+                n_estimators=300, max_depth=4, min_samples_leaf=5, random_state=42
+            ),
         )
     else:
         raise ValueError(f"modelo desconhecido: {kind}")
@@ -123,7 +146,7 @@ def backtest(df: pd.DataFrame) -> pd.DataFrame:
         train = df[df["round"] < test_round]
         test = df[df["round"] == test_round].copy()
 
-        for kind in ("ridge", "rf"):
+        for kind in ("ridge", "rf", "hurdle", "hurdle_rf"):
             model = make_model(kind)
             model.fit(train[NUMERIC_FEATURES + CATEGORICAL_FEATURES], train[TARGET])
             test[f"pred_{kind}"] = model.predict(test[NUMERIC_FEATURES + CATEGORICAL_FEATURES])
@@ -159,6 +182,28 @@ def evaluate(results: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(report).sort_values("MAE").reset_index(drop=True)
 
 
+def mae_by_team(results: pd.DataFrame) -> pd.DataFrame:
+    """
+    Erro por equipe. É aqui que se vê para quem o modelo em duas etapas serve:
+    o ganho dele deve aparecer nas equipes que zeram com frequência, não nas
+    que pontuam toda corrida.
+    """
+    pred_cols = [c for c in results.columns if c.startswith("pred_")]
+    rows = []
+    for team, g in results.groupby("constructor_id"):
+        row = {"equipe": team, "pts_medio": g[TARGET].mean(), "zeros": int((g[TARGET] == 0).sum()), "n": len(g)}
+        for col in pred_cols:
+            valid = g[g[col].notna()]
+            row[col.replace("pred_", "")] = mean_absolute_error(valid[TARGET], valid[col])
+        rows.append(row)
+    return (
+        pd.DataFrame(rows)
+        .sort_values("pts_medio", ascending=False)
+        .set_index("equipe")
+        .round(2)
+    )
+
+
 def inspect_ridge_coefficients(df: pd.DataFrame):
     """Treina uma vez na base toda só para ler os coeficientes (interpretação)."""
     model = make_model("ridge")
@@ -189,6 +234,9 @@ def main():
     report = evaluate(results)
     print("\n=== Desempenho no backtest (janela expansiva) ===")
     print(report.to_string(index=False))
+
+    print("\n=== MAE por equipe (ordenado por pontuação média) ===")
+    print(mae_by_team(results).to_string())
 
     print("\n=== Coeficientes do Ridge (base completa) ===")
     print(inspect_ridge_coefficients(df).to_string(index=False))

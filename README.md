@@ -149,19 +149,52 @@ Backtest over rounds 6-12 (77 predictions per model):
 
 | Model | MAE | RMSE | Within-race Spearman |
 |---|---|---|---|
-| Random Forest | **3.75** | 5.57 | **0.871** |
-| Ridge | 4.06 | **5.56** | 0.864 |
+| **Two-stage (hurdle) + RF** | **3.53** | **5.40** | **0.872** |
+| Random Forest | 3.75 | 5.57 | 0.871 |
+| Two-stage (hurdle) + linear | 3.77 | 5.44 | 0.868 |
+| Ridge | 4.06 | 5.56 | 0.864 |
 | Baseline: team's season-to-date mean | 4.42 | 6.38 | 0.819 |
 | Baseline: team's last race | 4.96 | 7.80 | 0.835 |
 | Baseline: global mean | 9.73 | 11.22 | — |
 
-**Honest reading of these numbers.** The Random Forest beats the strongest
-naive baseline by 0.67 MAE and wins in 6 of the 7 test rounds, but a paired
-bootstrap puts the 95% CI of that gain at **[-0.12, +1.46] — it crosses
-zero**. So the edge is suggestive (P(better) ≈ 0.95), not conclusive. That is
-the expected outcome with 121 rows: F1 gives ~11 teams × ~23 races per season,
-and restricting to the 2026 regulation caps the data hard. The gap should
-become decidable as the season adds rounds.
+### The two-stage (hurdle) model
+
+39% of rows are exactly 0 points, and those zeros aren't "few points" — only
+the top 10 finishers score at all, so a backmarker scoring nothing is a
+different event from a strong team having a bad day. `src/models/two_stage.py`
+splits the question in two: a classifier for *does this team score?* and a
+regressor trained **only on scoring rows** for *how much, given it scored?*.
+The prediction is `P(score) × E[points | scored]`.
+
+Paired bootstrap (10k resamples) on the gain in MAE:
+
+| Comparison | Gain | 95% CI | P(better) |
+|---|---|---|---|
+| Two-stage RF vs single-stage RF | +0.22 | [+0.03, +0.42] | 0.991 |
+| Two-stage RF vs season-to-date baseline | +0.89 | [+0.01, +1.78] | 0.977 |
+
+Both CIs now exclude zero — narrowly for the baseline comparison. The
+two-stage model is a real, if small, improvement over the single-stage one.
+
+### Testing it on Mercedes
+
+Mercedes scored in **all 12 races**, so the classification stage is trivially
+~1 for them and the two-stage design should, in principle, change nothing.
+It still helped (MAE 6.33 vs 7.14 for single-stage RF; CI [+0.26, +1.38]).
+The reason is the *second* stage, not the first: a single regressor trained on
+all rows is dragged toward zero by the 39% of rows that are zeros, which
+systematically under-predicts the strong teams. Training the conditional stage
+only on scoring rows removes that pull.
+
+**The more important finding is a negative one.** Across all teams, predicted
+vs actual correlates at **+0.88**. Within Mercedes alone it is **-0.16
+(p=0.72)** — no signal at all. Mercedes' actual points swing from 18 to 40
+(sd 8.2) while the model predicts 23-27 every race (sd 1.3), with near-zero
+bias (+0.22). So the model has essentially **no ability to predict a single
+strong team's race-to-race variation**; what it does well is rank teams
+against each other and track the level of a team better than a lagging
+average. Anyone reading the headline MAE should know the skill is almost
+entirely "which team is this", not "what will happen this Sunday".
 
 The Ridge coefficients are physically sensible, which is a good sign the
 pipeline isn't fitting noise: season-to-date form dominates (+3.90), better
@@ -169,12 +202,40 @@ pipeline isn't fitting noise: season-to-date form dominates (+3.90), better
 track type contributes almost nothing (|coef| < 0.04) — with 5 categories over
 121 rows there isn't enough data to learn track effects.
 
+## Predictions
+
+```bash
+python -m src.models.predict --modo holdout   # re-predict the last completed race
+python -m src.models.predict --modo proxima   # forecast the next race
+```
+
+**Holdout, round 12 (Dutch GP)** — trained on rounds 2-11 only, MAE **3.06**.
+It nailed the non-scorers and Audi exactly, but under-predicted both
+33-point scores (McLaren, Mercedes → ~24) and over-predicted RB (6.1 vs 0).
+
+**Next race, round 13 (Italian GP at Monza)** carries a real caveat: its
+qualifying hasn't happened yet, so the grid features don't exist and this
+forecast uses a weaker form-only model. Predicted: Mercedes 23.2, Ferrari
+21.9, McLaren 19.4, Red Bull 18.7, then everyone else under 4.
+
+That forecast also exposes a genuine flaw worth knowing about: **Cadillac is
+predicted 1.2 points despite never having scored all season** — ahead of
+Williams and Haas, who have. Without grid data the model leans on
+`hist_circuit_points`, and Cadillac fields Pérez (8.0 avg at Monza) and
+Bottas (7.33), records earned at Red Bull and Mercedes/Alfa Romeo rather than
+in a first-year Cadillac. Driver circuit history does not transfer across a
+change of car, and the full model only avoids this because grid position
+reveals the car is slow.
+
 ## Next steps
 
-- Re-run the backtest as rounds are added — the RF-vs-baseline gap is the
+- Re-run the backtest as rounds are added — the model-vs-baseline gap is the
   number to watch
-- Try a two-stage target (points scored | scored at all) given how many rows
-  are exactly 0
+- Weight `hist_circuit_points` by the driver's current car competitiveness, so
+  a strong record earned in a faster car stops inflating a weak team
+- Investigate whether *any* feature predicts a single team's race-to-race
+  swing, or whether that variance is mostly irreducible (reliability, weather,
+  safety cars)
 - Consider fixing the pagination issue above in the collector
 
 ## Author
