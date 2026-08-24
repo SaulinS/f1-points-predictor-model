@@ -30,7 +30,10 @@ habilidade do piloto, não do carro.
 - [x] **Fase 2 — Engenharia de Dados**: schema relacional, banco PostgreSQL
       containerizado com Docker, e pipeline de ETL (raw → banco) — **rodada e
       verificada contra um Postgres real** (não só em dry-run)
-- [ ] Fase 3 — Modelo preditivo (regressão de pontos por corrida)
+- [~] **Fase 3 — Modelo preditivo**: pipeline de features e backtest de janela
+      expansiva sem vazamento já implementados; os primeiros modelos batem os
+      baselines ingênuos, embora ainda não por uma margem estatisticamente
+      conclusiva (veja [Resultados da modelagem](#resultados-da-modelagem))
 - [ ] Fase 4 — Dashboard ou API servindo as previsões
 
 Os dados atualmente cobrem a temporada 2026 até a **rodada 12**, coletados em
@@ -126,11 +129,57 @@ JSON bruto. Vale corrigir no coletor (ex: remontar os blocos divididos, ou
 paginar por corrida em vez de por resultado) antes de confiar em
 `data/raw/races/*.json` para qualquer uso fora desse ETL.
 
-## Próximos passos (Fase 3)
+## Resultados da modelagem
 
-- Definir as features de treino (histórico do piloto por circuito, tipo de
-  pista, etc.)
-- Treinar e avaliar o modelo preditivo
+```bash
+python -m src.models.build_features   # banco -> data/processed/team_race_features.csv
+python -m src.models.train            # backtest de janela expansiva
+```
+
+**As features são estritamente pré-corrida.** A formação da equipe e o grid
+vêm da tabela `qualifying` (sábado), não de `results` — assim a tabela de
+resultados serve só para montar o alvo, e nenhum dado de chegada consegue
+vazar para uma feature por descuido. As features de forma (`form_last3`,
+`form_todate`, `dnf_rate_todate`) são deslocadas em uma rodada, então a
+corrida sendo prevista nunca entra no cálculo da própria feature. Verificado
+programaticamente: 0 linhas em que a corrida corrente vaza para suas features.
+
+**A validação é um backtest de janela expansiva**: para cada rodada de teste,
+o modelo treina apenas com as rodadas anteriores. Um k-fold aleatório
+treinaria com corridas futuras para prever corridas passadas, inflando a
+métrica de um jeito que nunca se sustenta em uso real.
+
+Backtest nas rodadas 6-12 (77 previsões por modelo):
+
+| Modelo | MAE | RMSE | Spearman intra-corrida |
+|---|---|---|---|
+| Random Forest | **3,75** | 5,57 | **0,871** |
+| Ridge | 4,06 | **5,56** | 0,864 |
+| Baseline: média da equipe até a rodada | 4,42 | 6,38 | 0,819 |
+| Baseline: última corrida da equipe | 4,96 | 7,80 | 0,835 |
+| Baseline: média global | 9,73 | 11,22 | — |
+
+**Leitura honesta desses números.** O Random Forest bate o baseline mais forte
+por 0,67 de MAE e vence em 6 das 7 rodadas de teste, mas um bootstrap pareado
+coloca o IC95% desse ganho em **[-0,12, +1,46] — ou seja, cruza o zero**.
+A vantagem é sugestiva (P(melhor) ≈ 0,95), não conclusiva. Esse é o resultado
+esperado com 121 linhas: a F1 dá ~11 equipes × ~23 corridas por temporada, e
+restringir ao regulamento 2026 limita muito o volume de dados. A diferença
+tende a ficar decidível conforme a temporada avança.
+
+Os coeficientes do Ridge fazem sentido físico, o que é um bom sinal de que a
+pipeline não está ajustando ruído: a forma na temporada domina (+3,90),
+grids melhores (mais baixos) elevam a previsão de pontos (-2,09 em
+`grid_best`), e o tipo de pista quase não contribui (|coef| < 0,04) — com 5
+categorias em 121 linhas não há dados suficientes para aprender efeito de
+pista.
+
+## Próximos passos
+
+- Rodar o backtest de novo conforme as rodadas avançam — a diferença entre RF
+  e baseline é o número a acompanhar
+- Testar um alvo em duas etapas (pontuou / quanto pontuou), dado quantas
+  linhas são exatamente 0
 - Considerar corrigir o problema de paginação descrito acima no coletor
 
 ## Autor
