@@ -1,85 +1,135 @@
 # F1 Team Points Predictor
 
-Projeto de portfólio: pipeline de dados end-to-end (coleta → engenharia de dados →
-modelo preditivo) para prever a **pontuação de uma equipe de F1 por corrida**,
-usando dados do regulamento atual (2026).
+🇺🇸 English | [🇧🇷 Português](READMEpt.md)
 
-## Motivação
+End-to-end data pipeline (collection → data engineering → predictive model) to
+forecast a **Formula 1 team's points per race**, using data exclusively from the
+current technical regulation era (2026).
 
-2026 é um ano de regulamento totalmente novo na F1 (motor, aerodinâmica ativa,
-novas equipes). Por isso, o modelo é treinado **apenas com dados de 2026** para
-a variável-alvo (pontos da equipe), evitando misturar eras de regulamento
-incomparáveis. Features sobre características fixas (tipo de pista, histórico
-do piloto) podem usar dados históricos, já que não dependem do regulamento do carro.
+Portfolio project built during semester break, focused on solid data engineering
+practices: resilient collection with rate limiting, layered storage (raw →
+processed), a containerized relational database, and a reproducible pipeline.
 
-## Status do projeto
+## Why 2026 only?
 
-- [x] Fase 1 — Coleta de Dados
-- [x] Fase 2 — Engenharia de Dados (ETL, banco de dados, Docker) — schema, ETL e
-  docker-compose implementados; ETL validado em dry-run contra os dados reais
-  coletados (0 erros). **Falta rodar contra um Postgres real** para confirmar
-  constraints/tipos em runtime.
-- [ ] Fase 3 — Modelo Preditivo
-- [ ] Fase 4 — Dashboard / API de entrega
+The 2026 F1 season introduced a completely new technical regulation (hybrid
+power unit, active aerodynamics, new teams). Mixing data across different
+regulation eras would distort the model, since relative team performance isn't
+comparable between regulations. For that reason, the target variable (team
+points) is trained **exclusively** on 2026 data. Features based on fixed
+characteristics — such as a driver's history at a given circuit — still use
+historical data (2019-2025), since those depend on driver skill rather than
+the car.
 
-## Estrutura
+## Project status
+
+- [x] **Phase 1 — Data Collection**: calendar, race results, qualifying, pit
+      stops, race status, current grid, and driver-per-circuit history
+- [x] **Phase 2 — Data Engineering**: relational schema, PostgreSQL database
+      containerized with Docker, and ETL pipeline (raw → database) — **run and
+      verified against a real Postgres instance** (not just dry-run)
+- [ ] Phase 3 — Predictive model (team points per race regression)
+- [ ] Phase 4 — Dashboard or API serving predictions
+
+Data currently covers the 2026 season through **round 12**, collected on
+2026-08-24.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Data collection | Python, `requests` |
+| Raw storage | JSON (raw layer) |
+| Database | PostgreSQL 16 (via Docker) |
+| ETL | Python, `pandas`, `sqlalchemy` |
+| Modeling | `scikit-learn` (planned) |
+| Environment | WSL2 (Ubuntu) + Docker Desktop |
+
+## Data sources
+
+- **[Jolpica-F1](https://api.jolpi.ca)** — public API, successor to the Ergast
+  API, providing race results, qualifying, pit stops, race status, and both
+  historical and current-season standings.
+- **Track type classification** — manually curated
+  (`data/lookup/track_types.csv`), since no structured public source exists
+  for this categorization. Validated against real `circuit_id`s returned by
+  the API — all match except `madring`, a new-for-2026 circuit that hasn't
+  hosted a race yet.
+
+## Project structure
 
 ```
 f1-team-points-predictor/
 ├── data/
-│   ├── raw/            # dados brutos, exatamente como vieram da API (nunca editar manualmente)
-│   ├── processed/       # dados tratados, prontos para modelagem
-│   └── lookup/          # tabelas de referência curadas manualmente (ex: tipo de pista)
+│   ├── raw/              # raw data, exactly as returned by the API
+│   ├── processed/        # cleaned data, ready for database loading
+│   └── lookup/           # manually curated reference tables
 ├── src/
-│   ├── collectors/      # scripts de coleta de dados (Fase 1)
-│   ├── etl/              # limpeza, transformação, carga no banco (Fase 2)
-│   └── models/           # treinamento e avaliação do modelo (Fase 3)
-├── notebooks/            # exploração e prototipagem
-├── docker/                # configuração de containers (Fase 2)
+│   ├── collectors/       # data collection scripts (Phase 1)
+│   ├── etl/               # schema.sql and transform/load pipeline (Phase 2)
+│   └── models/             # model training and evaluation (Phase 3)
+├── docker-compose.yml        # spins up the containerized PostgreSQL instance
 └── requirements.txt
 ```
 
-## Fonte de dados
+## Getting started
 
-- **Jolpica-F1 API** (https://api.jolpi.ca) — sucessora oficial da Ergast API.
-  Fornece resultados de corrida, qualifying, pit stops, status de finalização
-  e classificações.
-- **Tipo de pista** — classificação manual em `data/lookup/track_types.csv`
-  (não existe API pública para isso). **Precisa de validação**: os `circuit_id`
-  foram escritos de memória e devem ser conferidos contra o retorno real do
-  endpoint `/2026/races/` antes do uso na Fase 2.
-
-## Como rodar a coleta
+**Prerequisites:** WSL2 (Ubuntu) with Python 3.10+, Docker Desktop with WSL2
+integration enabled.
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # no Windows: venv\Scripts\activate
+# Python environment
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 
-# Coleta os dados da temporada 2026
-python -m src.collectors.collect_season --season 2026
+# Database
+docker compose up -d
 
-# Coleta o histórico dos pilotos por circuito (pode demorar - muitas requisições)
+# Data collection (Phase 1)
+python -m src.collectors.collect_season --season 2026
+python -m src.collectors.collect_current_grid --season 2026
 python -m src.collectors.collect_driver_circuit_history --seasons 2019 2020 2021 2022 2023 2024 2025
+
+# ETL (Phase 2)
+python -m src.etl.load_to_postgres
 ```
 
-Os dados brutos são salvos em `data/raw/`, organizados por tipo.
+Raw data is saved under `data/raw/`. The database schema is created
+automatically the first time the PostgreSQL container starts (via
+`docker-entrypoint-initdb.d`).
 
-## Status da Fase 2
+## Database design
 
-- [x] Validar a tabela `track_types.csv` contra os circuit_ids reais retornados pela API
-  — todos os `circuit_id` presentes nos dados batem com o lookup (só `madring`
-  ainda não apareceu em nenhum resultado, por ser pista nova em 2026).
-- [x] Modelar o schema relacional (PostgreSQL) — `src/etl/schema.sql`
-- [x] Construir a pipeline de ETL (raw → banco) — `src/etl/load_to_postgres.py`,
-  validada em dry-run contra os dados reais (10 corridas, 195 qualifying,
-  362 pitstops, 1755 corridas históricas — 0 erros)
-- [x] Containerizar com Docker — `docker-compose.yml`
-- [ ] Rodar o ETL contra um Postgres real (bloqueado localmente por falta de
-  acesso ao Docker/sudo neste ambiente — pendente de execução)
+The database has two central views that avoid duplicating raw data:
 
-## Próximos passos (Fase 3)
+- `team_race_points` — sums both drivers' points per team/race (this is the
+  predictive model's **target**)
+- `driver_circuit_history` — results from previous seasons by driver and
+  circuit (this is the **feature** for driver track history)
 
-- Rodar a carga real no Postgres e conferir os dados carregados
-- Definir features de treino (histórico do piloto por circuito, tipo de pista, etc.)
-- Treinar e avaliar o modelo preditivo
+See `src/etl/schema.sql` for the full schema.
+
+## Known issue: duplicate race blocks in paginated raw data
+
+The Jolpica-F1 `/results/` endpoint paginates by **individual result row**,
+not by race. Since each race has ~20-22 results and pages are fetched in
+batches of 100, a race can straddle a page boundary and show up as two
+separate, partial blocks in the raw JSON (e.g. round 5 as 12+10 results,
+round 10 as 2+20). This doesn't corrupt the database — `load_to_postgres.py`
+upserts by `(race_id, driver_id)`, so both partial blocks together still
+produce the correct, complete set of results — but it does mean the raw JSON
+should not be assumed to have one block per race. Worth fixing in the
+collector (e.g. re-assembling split blocks, or paginating by race instead)
+before relying on `data/raw/races/*.json` for anything outside this ETL.
+
+## Next steps (Phase 3)
+
+- Define training features (driver's circuit history, track type, etc.)
+- Train and evaluate the predictive model
+- Consider fixing the pagination issue above in the collector
+
+## Author
+
+Built as part of a data engineering / data science portfolio by a Computer
+Engineering student.

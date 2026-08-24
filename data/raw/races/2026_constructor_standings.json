@@ -1,13 +1,13 @@
 [
   {
     "season": "2026",
-    "round": "9",
+    "round": "12",
     "ConstructorStandings": [
       {
         "position": "1",
         "positionText": "1",
-        "points": "333",
-        "wins": "7",
+        "points": "425",
+        "wins": "8",
         "Constructor": {
           "constructorId": "mercedes",
           "url": "https://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One",
@@ -18,7 +18,7 @@
       {
         "position": "2",
         "positionText": "2",
-        "points": "255",
+        "points": "338",
         "wins": "2",
         "Constructor": {
           "constructorId": "ferrari",
@@ -30,8 +30,8 @@
       {
         "position": "3",
         "positionText": "3",
-        "points": "179",
-        "wins": "0",
+        "points": "263",
+        "wins": "2",
         "Constructor": {
           "constructorId": "mclaren",
           "url": "https://en.wikipedia.org/wiki/McLaren",
@@ -42,7 +42,7 @@
       {
         "position": "4",
         "positionText": "4",
-        "points": "128",
+        "points": "186",
         "wins": "0",
         "Constructor": {
           "constructorId": "red_bull",
@@ -54,25 +54,25 @@
       {
         "position": "5",
         "positionText": "5",
-        "points": "60",
-        "wins": "0",
-        "Constructor": {
-          "constructorId": "alpine",
-          "url": "https://en.wikipedia.org/wiki/Alpine_F1_Team",
-          "name": "Alpine F1 Team",
-          "nationality": "French"
-        }
-      },
-      {
-        "position": "6",
-        "positionText": "6",
-        "points": "59",
+        "points": "66",
         "wins": "0",
         "Constructor": {
           "constructorId": "rb",
           "url": "https://en.wikipedia.org/wiki/Racing_Bulls",
           "name": "RB F1 Team",
           "nationality": "Italian"
+        }
+      },
+      {
+        "position": "6",
+        "positionText": "6",
+        "points": "63",
+        "wins": "0",
+        "Constructor": {
+          "constructorId": "alpine",
+          "url": "https://en.wikipedia.org/wiki/Alpine_F1_Team",
+          "name": "Alpine F1 Team",
+          "nationality": "French"
         }
       },
       {
@@ -90,6 +90,18 @@
       {
         "position": "8",
         "positionText": "8",
+        "points": "16",
+        "wins": "0",
+        "Constructor": {
+          "constructorId": "audi",
+          "url": "https://en.wikipedia.org/wiki/Audi_in_Formula_One",
+          "name": "Audi",
+          "nationality": "German"
+        }
+      },
+      {
+        "position": "9",
+        "positionText": "9",
         "points": "11",
         "wins": "0",
         "Constructor": {
@@ -100,21 +112,9 @@
         }
       },
       {
-        "position": "9",
-        "positionText": "9",
-        "points": "6",
-        "wins": "0",
-        "Constructor": {
-          "constructorId": "audi",
-          "url": "https://en.wikipedia.org/wiki/Audi_in_Formula_One",
-          "name": "Audi",
-          "nationality": "German"
-        }
-      },
-      {
         "position": "10",
         "positionText": "10",
-        "points": "1",
+        "points": "3",
         "wins": "0",
         "Constructor": {
           "constructorId": "aston_martin",
