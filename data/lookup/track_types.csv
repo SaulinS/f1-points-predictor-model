@@ -1,0 +1,23 @@
+circuit_id,circuit_name,track_type,notes
+albert_park,Albert Park,mista,semi-street; velocidade media-alta
+shanghai,Shanghai International Circuit,tecnica,curvas longas e variadas
+suzuka,Suzuka Circuit,tecnica,alta exigencia aerodinamica
+miami,Miami International Autodrome,rua,
+monaco,Circuit de Monaco,rua,baixa velocidade extrema
+catalunya,Circuit de Barcelona-Catalunya,mista,
+madring,Madrid Street Circuit,rua,novo em 2026 - validar apos a corrida
+villeneuve,Circuit Gilles Villeneuve,rua,
+red_bull_ring,Red Bull Ring,alta_velocidade,curvas rapidas poucas curvas
+silverstone,Silverstone Circuit,alta_velocidade,
+spa,Circuit de Spa-Francorchamps,alta_velocidade,
+hungaroring,Hungaroring,tecnica,pista apertada baixa velocidade media
+zandvoort,Circuit Zandvoort,tecnica,curvas com banking
+monza,Autodromo Nazionale di Monza,alta_velocidade,baixissima carga aerodinamica
+baku,Baku City Circuit,rua_alta_velocidade,reta longa + street tecnico
+marina_bay,Marina Bay Street Circuit,rua,
+americas,Circuit of the Americas,mista,
+rodriguez,Autodromo Hermanos Rodriguez,mista,altitude elevada
+interlagos,Autodromo Jose Carlos Pace,mista,
+vegas,Las Vegas Strip Circuit,rua_alta_velocidade,id corrigido -- API usa 'vegas' e nao 'las_vegas'
+losail,Losail International Circuit,alta_velocidade,
+yas_marina,Yas Marina Circuit,mista,

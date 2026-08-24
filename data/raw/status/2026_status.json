@@ -1,0 +1,22 @@
+[
+  {
+    "statusId": "1",
+    "count": "89",
+    "status": "Finished"
+  },
+  {
+    "statusId": "143",
+    "count": "64",
+    "status": "Lapped"
+  },
+  {
+    "statusId": "31",
+    "count": "38",
+    "status": "Retired"
+  },
+  {
+    "statusId": "142",
+    "count": "7",
+    "status": "Did not start"
+  }
+]

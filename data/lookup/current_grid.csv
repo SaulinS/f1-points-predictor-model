@@ -1,0 +1,23 @@
+driver_id,driver_code,given_name,family_name,nationality,constructor_id,constructor_name,points_so_far,wins_so_far
+antonelli,ANT,Andrea Kimi,Antonelli,Italian,mercedes,Mercedes,179,5
+russell,RUS,George,Russell,British,mercedes,Mercedes,154,2
+hamilton,HAM,Lewis,Hamilton,British,ferrari,Ferrari,147,1
+leclerc,LEC,Charles,Leclerc,Monegasque,ferrari,Ferrari,108,1
+norris,NOR,Lando,Norris,British,mclaren,McLaren,97,0
+piastri,PIA,Oscar,Piastri,Australian,mclaren,McLaren,82,0
+max_verstappen,VER,Max,Verstappen,Dutch,red_bull,Red Bull,76,0
+hadjar,HAD,Isack,Hadjar,French,red_bull,Red Bull,52,0
+gasly,GAS,Pierre,Gasly,French,alpine,Alpine F1 Team,42,0
+lawson,LAW,Liam,Lawson,New Zealander,rb,RB F1 Team,39,0
+arvid_lindblad,LIN,Arvid,Lindblad,British,rb,RB F1 Team,20,0
+bearman,BEA,Oliver,Bearman,British,haas,Haas F1 Team,18,0
+colapinto,COL,Franco,Colapinto,Argentine,alpine,Alpine F1 Team,18,0
+bortoleto,BOR,Gabriel,Bortoleto,Brazilian,audi,Audi,6,0
+sainz,SAI,Carlos,Sainz,Spanish,williams,Williams,6,0
+albon,ALB,Alexander,Albon,Thai,williams,Williams,5,0
+ocon,OCO,Esteban,Ocon,French,haas,Haas F1 Team,3,0
+alonso,ALO,Fernando,Alonso,Spanish,aston_martin,Aston Martin,1,0
+hulkenberg,HUL,Nico,Hülkenberg,German,audi,Audi,0,0
+bottas,BOT,Valtteri,Bottas,Finnish,cadillac,Cadillac F1 Team,0,0
+perez,PER,Sergio,Pérez,Mexican,cadillac,Cadillac F1 Team,0,0
+stroll,STR,Lance,Stroll,Canadian,aston_martin,Aston Martin,0,0

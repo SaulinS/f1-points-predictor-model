@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: f1_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: f1_predictor
+      POSTGRES_USER: f1_user
+      POSTGRES_PASSWORD: f1_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - f1_pgdata:/var/lib/postgresql/data
+      - ./src/etl/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U f1_user -d f1_predictor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  f1_pgdata:
